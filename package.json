@@ -1,0 +1,16 @@
+{
+  "name": "MTGSearch",
+  "version": "1.0.0",
+  "description": "A simple Discord bot to search for Magic: The Gathering cards.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [],
+  "author": "@rainfallgv",
+  "license": "ISC",
+  "dependencies": {
+    "discord.js": "^11.4.2",
+    "scryfall-sdk": "^1.5.0"
+  }
+}
