@@ -98,7 +98,7 @@ client.login(process.env.TOKEN);
 
 function ToggleTap(guildid) {tappedguilds[guildid.toString()]=!tappedguilds[guildid.toString()];}
 
-function IsTapped(guildid) {console.log(tappedguilds[guildid.toString()]); return tappedguilds[guildid.toString()];}
+function IsTapped(guildid) {return tappedguilds[guildid.toString()];}
 
 function GetOracleString(card)
 {
