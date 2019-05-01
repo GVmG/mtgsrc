@@ -2,18 +2,23 @@ const Discord=require('discord.js');
 const scryfall=require("scryfall-sdk");
 const client = new Discord.Client();
 
-tapped=false;
+tappedguilds=[{}];
 
 client.on("ready", () => {
     console.log("Logged in as ${client.user.tag}!");
 	mainguild=client.guilds.get(process.env.MAINGUILD); //get the default server for the bot to find the mana emotes.
 	mainmana=mainguild.emojis.find(emoji => emoji.name == "unknown");
+	CustomLog("info", "BOT GUILD LIST", "The bot is part of the following Guilds:");
+	client.guilds.forEach(function(guild) {
+		tappedguilds[guild.id.toString()]=false;
+		console.log(guild.name+" "+guild.id.toString());
+	});
 });
 
 client.on("message", msg => {
 	if (msg.author.id!=client.user.id) //if it's not the bot itself
 	{
-		if (msg.content.includes("[[") && msg.content.includes("]]") && !tapped)
+		if (msg.content.includes("[[") && msg.content.includes("]]") && !IsTapped(msg.guild.id))
 		{
 			required=GetCardRequirements(msg.content);
 			required.forEach(function(cardstr) {
@@ -34,7 +39,7 @@ client.on("message", msg => {
 				});;
 			});
 		}
-		else if (msg.content.startsWith("!mtgsrc") && !tapped)
+		else if (msg.content.startsWith("!mtgsrc") && !IsTapped(msg.guild.id))
 		{
 			card=msg.content.replace("!mtgsrc", "").split("?").map(s => s.trim()); //lemme just get the string, remove the command, split it into name and set, and then remove extra spaces.
 			cardname=card[0];
@@ -54,7 +59,7 @@ client.on("message", msg => {
 				CustomLog("!!!!", "ERROR FOR "+cardname, error);
 			});;
 		}
-		else if (msg.content.startsWith("!mtgtxt") && !tapped)
+		else if (msg.content.startsWith("!mtgtxt") && !IsTapped(msg.guild.id))
 		{
 			card=msg.content.replace("!mtgtxt", "").split("?").map(s => s.trim()); //lemme just get the string, remove the command, split it into name and set, and then remove extra spaces.
 			cardname=card[0];
@@ -72,12 +77,7 @@ client.on("message", msg => {
 				CustomLog("!!!!", "ERROR FOR "+cardname, error);
 			});;
 		}
-		else if (msg.content.startsWith("!mtgtap"))
-		{
-			tapped=!tapped;
-			msg.reply("Bot is now "+(tapped ? "TAPPED" : "UNTAPPED"));
-		}
-		else if (msg.content==="!mtghelp" && !tapped)
+		else if (msg.content==="!mtghelp" && !IsTapped(msg.guild.id))
 		{
 			msg.reply("`!mtgsrc <card name> (?set)` search for a card (?set is optional, both set codes and partial/full names *should* work)\n"+
 				"    Example: `!mtgsrc sylvan ?dominaria` will link Sylvan Awakening\n\n"+
@@ -86,10 +86,19 @@ client.on("message", msg => {
 				"`!mtghelp` this command\n\n"+
 				"Alternatively, the bot will recognize cards with [[names written this way]] in any part of a message, and will search for those. Please note that searching for a lot of cards this way will have the bot spam the chat, so please avoid it.");	
 		}
+		else if (msg.content.startsWith("!mtgtap"))
+		{
+			ToggleTap(msg.guild.id);
+			msg.reply("Bot is now "+(IsTapped(msg.guild.id) ? "TAPPED" : "UNTAPPED"));
+		}
 	}
 });
 
 client.login(process.env.TOKEN);
+
+function ToggleTap(guildid) {tappedguilds[guildid.toString()]=!tappedguilds[guildid.toString()];}
+
+function IsTapped(guildid) {console.log(tappedguilds[guildid.toString()]); return tappedguilds[guildid.toString()];}
 
 function GetOracleString(card)
 {
@@ -149,7 +158,7 @@ function GetCardRequirements(str)
 
 function CustomLog(type, text, obj)
 {
-	console.log("("+type+") [MTGSearch] "+text+":")
+	console.log("("+type+") [MTGSearch] "+text+"")
 	console.log(obj);
 	console.log("\n");
 }
