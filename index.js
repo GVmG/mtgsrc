@@ -2,10 +2,21 @@ const Discord=require('discord.js');
 const scryfall=require("scryfall-sdk");
 const client = new Discord.Client();
 
+const helpmsg="**MTGSearch**, a Discord bot that searches for Magic: The Gathering cards.\n\n Commands:\n"+
+				"- `!mtgsrc card_name |set` search for a card. |set is optional, both set codes and partial/full names *should* work.\n"+
+				"    Example: `!mtgsrc sylvan |dominaria` will link Sylvan Awakening, a card from the Dominaria set (just *!mtgsrc sylvan* wont find it).\n\n"+
+				"- `!mtgtxt card_name |set` same as `!mtgsrc`, but it just displays the card in text format rather than embedding the picture.\n\n"+
+				"- `!mtgtap` tap/untap the bot (won't respone when tapped - you can use this in case the bot goes mental to stop it)\n\n"+
+				"- `!mtghelp` this command\n\n"+
+				"Alternatively, the bot will search cards in the `[[name|set]]` format in any part of a message (and it wont reply at all if it doesnt find one). "+
+				"Again, the set is optional, and the bot will autocorrect if there are minor spelling mistakes. "+
+				"Note that searching for a lot of cards this way will have the bot spam the chat, so please avoid more than 2 cards at once.\n\n"+
+				"For any problem, contact *GV#5559*."
+
 tappedguilds=[{}];
 
 client.on("ready", () => {
-    console.log("Logged in as ${client.user.tag}!");
+    console.log("Logged in as "+client.user.tag);
 	mainguild=client.guilds.get(process.env.MAINGUILD); //get the default server for the bot to find the mana emotes.
 	mainmana=mainguild.emojis.find(emoji => emoji.name == "unknown");
 	CustomLog("info", "BOT GUILD LIST", "The bot is part of the following Guilds:");
@@ -20,52 +31,23 @@ client.on("message", msg => {
 	{
 		if (msg.content.includes("[[") && msg.content.includes("]]") && !IsTapped(msg.guild.id))
 		{
-			required=GetCardRequirements(msg.content);
-			required.forEach(function(cardstr) {
-				card=cardstr.split("?").map(s => s.trim()); //lemme just get the string, remove the command, split it into name and set, and then remove extra spaces.
-				cardname=card[0];
-				cardset=card[1];
-				scryfall.Cards.byName(card[0], card[1], true).then(result => {
-					//CustomLog("info", "RESULT FOR "+card, result);
-					var embed=new Discord.RichEmbed();
-					embed.setImage(result.image_uris.png);
-					embed.setTitle(result.name+" "+ManaToEmotes(result.mana_cost));
-					embed.setURL(result.scryfall_uri);
-					embed.setDescription(result.type_line);
-					embed.setFooter("Set: "+result.set_name+" ("+result.set.toUpperCase()+")");
-					msg.reply("", {embed:embed});
-				}).catch(error => {
-					CustomLog("!!!!", "ERROR FOR "+cardname, error);
-				});;
+			var requiredcards=GetCardRequirements(msg.content);
+			
+			requiredcards.forEach(function(cardstr) {
+				card=NormalizeCardString(cardstr);
+				SendCard(card[0], card[1], msg);
 			});
 		}
 		else if (msg.content.startsWith("!mtgsrc") && !IsTapped(msg.guild.id))
 		{
-			card=msg.content.replace("!mtgsrc", "").split("?").map(s => s.trim()); //lemme just get the string, remove the command, split it into name and set, and then remove extra spaces.
-			cardname=card[0];
-			cardset=card[1];
-			scryfall.Cards.byName(card[0], card[1], true).then(result => {
-				//CustomLog("info", "RESULT FOR "+card, result);
-				var embed=new Discord.RichEmbed();
-				embed.setImage(result.image_uris.png);
-				embed.setTitle(result.name+" "+ManaToEmotes(result.mana_cost));
-				embed.setURL(result.scryfall_uri);
-				embed.setDescription(result.type_line);
-				embed.setFooter("Set: "+result.set_name+" ("+result.set.toUpperCase()+")");
-				msg.reply("I found this card:", {embed:embed});
-			}).catch(error => {
-				msg.reply("couldn't find any card matching '"+cardname+"'. You might have typed the name wrong, or maybe there are many cards that fit that and you need to be more specific.");
-				
-				CustomLog("!!!!", "ERROR FOR "+cardname, error);
-			});;
+			var card=NormalizeCardString(msg.content.replace("!mtgsrc", ""));
+			SendCard(card[0], card[1], msg);
 		}
 		else if (msg.content.startsWith("!mtgtxt") && !IsTapped(msg.guild.id))
 		{
-			card=msg.content.replace("!mtgtxt", "").split("?").map(s => s.trim()); //lemme just get the string, remove the command, split it into name and set, and then remove extra spaces.
-			cardname=card[0];
-			cardset=card[1];
+			var card=NormalizeCardString(msg.content.replace("!mtgtxt", ""));
+			////text version will take a bit to be worked on, I also need to implement oracle text
 			scryfall.Cards.byName(card[0], card[1], true).then(result => {
-				//CustomLog("info", "RESULT FOR "+card, result);
 				var cardmsg="";
 				cardmsg+=result.name+" - Mana Cost: "+ManaToEmotes(result.mana_cost)+"\n("+ColorsToEmotes(result.colors)+" "+result.type_line+")\n"+
 				"`"+GetOracleString(result)+"`\n"+
@@ -79,12 +61,7 @@ client.on("message", msg => {
 		}
 		else if (msg.content==="!mtghelp" && !IsTapped(msg.guild.id))
 		{
-			msg.reply("`!mtgsrc <card name> (?set)` search for a card (?set is optional, both set codes and partial/full names *should* work)\n"+
-				"    Example: `!mtgsrc sylvan ?dominaria` will link Sylvan Awakening\n\n"+
-				"`!mtgtxt <card name> (?set)` same as `!mtgsrc`, but it just displays the card in text format rather than embedding the picture.\n\n"+
-				"`!mtgtap` tap/untap the bot (won't respone when tapped - you can use this in case the bot goes mental to stop it)\n\n"+
-				"`!mtghelp` this command\n\n"+
-				"Alternatively, the bot will recognize cards with [[names written this way]] in any part of a message, and will search for those. Please note that searching for a lot of cards this way will have the bot spam the chat, so please avoid it.");	
+			msg.reply(helpmsg);	
 		}
 		else if (msg.content.startsWith("!mtgtap"))
 		{
@@ -103,6 +80,22 @@ function IsTapped(guildid) {return tappedguilds[guildid.toString()];}
 function GetOracleString(card)
 {
 	return "oracle text to be implemented";
+}
+
+function SendCard(cardname, cardset, msg)
+{
+	scryfall.Cards.byName(card[0], card[1], true).then(result => {
+		CustomLog("info", "REQUESTED A CARD ", cardname+" ("+cardset+")");
+		var embed=new Discord.RichEmbed();
+		embed.setImage(result.image_uris.png);
+		embed.setTitle(result.name+" "+ManaToEmotes(result.mana_cost));
+		embed.setURL(result.scryfall_uri);
+		embed.setDescription(result.type_line);
+		embed.setFooter("Set: "+result.set_name+" ("+result.set.toUpperCase()+")");
+		msg.reply("", {embed:embed});
+	}).catch(error => {
+		CustomLog("!!!!", "ERROR FOR "+cardname+" ("+cardset+")", error);
+	});
 }
 
 function ManaToEmotes(manastring)
@@ -139,6 +132,11 @@ function ColorsToEmotes(colors)
 		});
 	}
 	return emotestr;
+}
+
+function NormalizeCardString(str)
+{
+	return str.split("|").map(s => s.trim()); //lemme just get the string, split it into name and set, and then remove extra spaces.
 }
 
 function NormalizeManaString(str)
