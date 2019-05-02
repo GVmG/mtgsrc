@@ -4,9 +4,9 @@ const client = new Discord.Client();
 
 const helpmsg="**MTGSearch**, a Discord bot that searches for Magic: The Gathering cards.\n\n Commands:\n"+
 				"- `!mtgsrc card_name |set` search for a card. |set is optional, both set codes and partial/full names *should* work.\n"+
-				"    Example: `!mtgsrc sylvan |dominaria` will link Sylvan Awakening, a card from the Dominaria set (just *!mtgsrc sylvan* wont find it).\n\n"+
+				"    Example: `!mtgsrc sylvan |dominaria` will link Sylvan Awakening, a card from the Dominaria set.\n\n"+
 				"- `!mtgtxt card_name |set` same as `!mtgsrc`, but it just displays the card in text format rather than embedding the picture.\n\n"+
-				"- `!mtgtap` tap/untap the bot (won't respone when tapped - you can use this in case the bot goes mental to stop it)\n\n"+
+				"- `!mtgtap` tap/untap the bot (won't respond when tapped - you can use this in case the bot goes mental to stop it)\n\n"+
 				"- `!mtghelp` this command\n\n"+
 				"Alternatively, the bot will search cards in the `[[name|set]]` format in any part of a message (and it wont reply at all if it doesnt find one). "+
 				"Again, the set is optional, and the bot will autocorrect if there are minor spelling mistakes. "+
@@ -84,7 +84,7 @@ function GetOracleString(card)
 
 function SendCard(cardname, cardset, msg)
 {
-	scryfall.Cards.byName(card[0], card[1], true).then(result => {
+	scryfall.Cards.byName(cardname, cardset, true).then(result => {
 		CustomLog("info", "REQUESTED A CARD ", cardname+" ("+cardset+")");
 		var embed=new Discord.RichEmbed();
 		embed.setImage(result.image_uris.png);
